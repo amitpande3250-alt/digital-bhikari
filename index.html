@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Iccha-Purti Kund 🔮🥣</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { background: #0b0f19; color: #f8fafc; display: flex; flex-direction: column; min-height: 100vh; align-items: center; padding: 15px; }
+    
+    .hero-banner { width: 100%; max-width: 500px; text-align: center; margin: 20px 0 15px; }
+    .hero-banner h1 { font-size: 1.7rem; color: #f59e0b; line-height: 1.3; text-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+    .hero-banner p { color: #38bdf8; font-size: 0.95rem; margin-top: 8px; font-style: italic; min-height: 24px; }
+
+    .card { background: #1e293b; width: 100%; max-width: 500px; border-radius: 20px; padding: 22px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); border: 1px solid #334155; }
+    
+    .form-group { margin-bottom: 14px; text-align: left; }
+    .form-group label { font-size: 0.88rem; color: #cbd5e1; font-weight: bold; margin-bottom: 5px; display: block; }
+    
+    input, textarea, button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 0.95rem; }
+    textarea { resize: none; height: 75px; }
+
+    .amount-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 15px; }
+    .amt-btn { background: #334155; border: 2px solid transparent; color: #38bdf8; font-weight: bold; padding: 10px 0; border-radius: 10px; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+    .amt-btn:hover, .amt-btn.selected { background: #f59e0b; color: #000; }
+
+    .btn-main { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; border: none; cursor: pointer; font-size: 1.05rem; margin-top: 10px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); text-align: center; }
+    .btn-no-daan { background: #ef4444; color: #fff; font-weight: bold; border: none; cursor: pointer; font-size: 0.92rem; margin-top: 10px; }
+
+    /* Terms & Conditions Section */
+    .tc-box { background: #0f172a; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 12px; margin-top: 20px; font-size: 0.82rem; color: #94a3b8; line-height: 1.5; }
+    .tc-box h4 { color: #f59e0b; margin-bottom: 8px; font-size: 0.9rem; text-transform: uppercase; }
+    .tc-box ul { padding-left: 18px; }
+    .tc-box li { margin-bottom: 5px; }
+
+    /* Modals */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 100; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
+    .modal.active { display: flex; }
+    .modal-content { background: #1e293b; padding: 22px; border-radius: 18px; width: 100%; max-width: 480px; text-align: center; position: relative; border: 1px solid #475569; }
+    .close-btn { position: absolute; top: 10px; right: 15px; color: #fff; font-size: 1.6rem; cursor: pointer; }
+    .video-player { width: 100%; max-height: 320px; border-radius: 12px; margin: 12px 0; background: #000; }
+
+    /* Admin Table */
+    .table-container { max-height: 320px; overflow-y: auto; margin-top: 12px; text-align: left; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th, td { border: 1px solid #475569; padding: 8px; vertical-align: middle; }
+    th { background: #334155; color: #f59e0b; }
+    .btn-delete { background: #ef4444; color: #fff; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+  <div class="hero-banner">
+    <h1>🔮 Iccha Mango, Daan Karo...<br><span style="color:#38bdf8;">Iccha Zaroor Puri Hogi!</span> 💰</h1>
+    <p id="aiSlogan">⚡ AI naya slogan soch raha hai...</p>
+  </div>
+
+  <div class="card">
+    <div class="form-group">
+      <label>👤 Aapka Shubh Naam:</label>
+      <input type="text" id="donorName" placeholder="Jaise: Raju Daanveer, Ambani Jr.">
+    </div>
+
+    <div class="form-group">
+      <label>✨ Apni Dil Ki Iccha (Wish) Likho:</label>
+      <textarea id="donorWish" placeholder="Jaise: Ek BMW dilwa do, ya exam me pass karwa do..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>🪙 Iccha-Purti Daan Rashi Chuno:</label>
+      <div class="amount-grid">
+        <button type="button" class="amt-btn" onclick="selectAmount(11)">₹11</button>
+        <button type="button" class="amt-btn" onclick="selectAmount(21)">₹21</button>
+        <button type="button" class="amt-btn" onclick="selectAmount(51)">₹51</button>
+        <button type="button" class="amt-btn" onclick="selectAmount(101)">₹101</button>
+      </div>
+      <input type="number" id="customAmount" placeholder="Ya apni iccha se rashi dalein (₹)" value="11">
+    </div>
+
+    <button class="btn-main" onclick="submitWishAndPay()">🔮 Iccha Darj Karo & Daan Karo</button>
+    <button class="btn-no-daan" onclick="triggerMemeVideo()">❌ Daan Nahi Karna, AI Se Ladna Hai 🏃‍♂️</button>
+
+    <div class="tc-box">
+      <h4>📜 Niyam Aur Shartein (Terms & Conditions):</h4>
+      <ul>
+        <li>⏳ <strong>Waqt Lagega:</strong> Iccha instant puri nahi hoti! Processing time 7 din se 700 saal lag sakta hai.</li>
+        <li>🛑 <strong>Aukaat Anusaar Maangein:</strong> Chand-Taare ya Elon Musk ki company mat mangna, wahi mangna jo sambhav ho.</li>
+        <li>🏃‍♂️ <strong>Karam Shart Hai:</strong> Agar iccha mang kar bistar par pade rahoge aur kuch karm nahi karoge, toh ghanta kuch pura nahi hoga!</li>
+        <li>❌ <strong>No Refund Policy:</strong> Ek baar daan kiya hua paisa wapas nahi milega. Bhagwan ke pass GST bill nahi banta!</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PPM Payment Modal -->
+  <div class="modal" id="ppmModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('ppmModal')">&times;</span>
+      <h3 style="color: #f59e0b;">🤖 Iccha Sankalp & Payment</h3>
+      
+      <div style="background:#0f172a; padding:12px; border-radius:10px; margin:12px 0; font-size:0.9rem; text-align:left;">
+        <p>✨ <strong>Iccha:</strong> <span id="confirmWish" style="color:#38bdf8;"></span></p>
+        <p style="margin-top:5px;">💰 <strong>Daan Rashi:</strong> <span id="confirmAmt" style="color:#f59e0b; font-weight:bold;"></span></p>
+      </div>
+
+      <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px;">Ye rashi AI ke <strong>Personal Paisa Manager (PPM)</strong> ke pass jayegi.</p>
+
+      <a id="directUpiBtn" href="#" class="btn-main" style="display: block; text-decoration: none; padding: 12px; border-radius: 10px;" onclick="finishPayment()">🚀 Pay via FamPay / UPI App</a>
+    </div>
+  </div>
+
+  <!-- Video Modal -->
+  <div class="modal" id="videoModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeVideoModal()">&times;</span>
+      <h3 style="color: #ef4444;">🚨 Pakda Gaya Kanjoos! 🚨</h3>
+      <p style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">Bina daan kiye iccha puri chahiye? Pehle ye dekh!</p>
+      
+      <video id="memeVideo" class="video-player" playsinline controls preload="auto">
+        <source src="/gareeb.mp4" type="video/mp4">
+      </video>
+
+      <button class="btn-main" onclick="proceedToChatAfterVideo()">Ab Jao AI Se Pitne 🤖</button>
+    </div>
+  </div>
+
+  <!-- Secret Admin Modal -->
+  <div class="modal" id="adminModal">
+    <div class="modal-content" style="max-width: 580px;">
+      <span class="close-btn" onclick="closeModal('adminModal')">&times;</span>
+      <h3 style="color: #f59e0b;">📊 Secret Iccha & Daan Records</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Naam</th>
+              <th>Wish</th>
+              <th>Rashi</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const FAMPAY_UPI_ID = "9270956352@fam";
+
+    async function loadAISlogan() {
+      try {
+        const res = await fetch('/api/slogan');
+        const data = await res.json();
+        if (data.slogan) document.getElementById('aiSlogan').innerText = `"${data.slogan}"`;
+      } catch (e) {
+        document.getElementById('aiSlogan').innerText = '"Iccha mango, daan karo, baki kismat pe chhod do! 🔮"';
+      }
+    }
+
+    window.onload = () => {
+      loadAISlogan();
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('secret') === 'Amit27') {
+        unlockAdmin('Amit27');
+      }
+    };
+
+    function selectAmount(val) {
+      document.getElementById('customAmount').value = val;
+    }
+
+    async function submitWishAndPay() {
+      const name = document.getElementById('donorName').value.trim() || 'Gupt Daanveer 🎭';
+      const wish = document.getElementById('donorWish').value.trim();
+      const amount = document.getElementById('customAmount').value || 11;
+
+      if (!wish) {
+        alert("Pehle apni koi iccha (wish) toh likho!");
+        return;
+      }
+
+      await fetch('/api/wish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, wish, amount })
+      });
+
+      document.getElementById('confirmWish').innerText = wish;
+      document.getElementById('confirmAmt').innerText = `₹${amount}`;
+
+      const upiDeepLink = `upi://pay?pa=${FAMPAY_UPI_ID}&pn=AI_Paisa_Manager&am=${amount}&cu=INR&tn=IcchaPurti_${encodeURIComponent(name)}`;
+      document.getElementById('directUpiBtn').href = upiDeepLink;
+
+      openModal('ppmModal');
+    }
+
+    function finishPayment() {
+      setTimeout(() => {
+        closeModal('ppmModal');
+        window.location.href = "/chat";
+      }, 3500);
+    }
+
+    function triggerMemeVideo() {
+      openModal('videoModal');
+      const vid = document.getElementById('memeVideo');
+      vid.currentTime = 0;
+      vid.play().catch(e => console.log("Interaction needed"));
+    }
+
+    function closeVideoModal() {
+      document.getElementById('memeVideo').pause();
+      closeModal('videoModal');
+    }
+
+    function proceedToChatAfterVideo() {
+      closeVideoModal();
+      window.location.href = "/chat";
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // Admin Panel Unlock & Row Builder
+    async function unlockAdmin(passcode) {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        openModal('adminModal');
+        const tbody = document.getElementById('adminTableBody');
+        if (data.wishes.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Koi record nahi mila!</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.wishes.map(d => `
+          <tr id="row-${d.id}">
+            <td><strong>${d.name}</strong></td>
+            <td style="color:#38bdf8;">${d.wish || 'N/A'}</td>
+            <td style="color:#f59e0b; font-weight:bold;">₹${d.amount}</td>
+            <td style="font-size:0.75rem;">${d.date || 'N/A'}</td>
+            <td style="text-align:center;">
+              <button class="btn-delete" onclick="deleteSingleRecord(${d.id})">🗑️</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Specific Single Record Delete Function
+    async function deleteSingleRecord(id) {
+      if (!confirm("Kya sach me sirf is record ko delete karna hai?")) return;
+
+      const res = await fetch('/api/admin/delete-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode: 'Amit27', id })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const row = document.getElementById(`row-${id}`);
+        if (row) row.remove();
+      } else {
+        alert("Delete nahi ho paya!");
+      }
+    }
+  </script>
+</body>
+</html>
