@@ -32,7 +32,7 @@ app.get('/api/slogan', async (req, res) => {
         'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gemma2-9b-it',
+        model: 'mixtral-8x7b-32768',
         messages: [
           {
             role: 'system',
@@ -89,7 +89,7 @@ Rules:
         'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gemma2-9b-it',
+        model: 'mixtral-8x7b-32768',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMsg }
