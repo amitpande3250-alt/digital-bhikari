@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 const DB_FILE = path.join(__dirname, 'donations.json');
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : "";
 const SECRET_ADMIN_PASS = "Amit27";
 
 app.use(cors());
@@ -89,12 +89,12 @@ Rules:
         'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama3-8b-8192',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMsg }
         ],
-        max_tokens: 150,
+        max_tokens: 120,
         temperature: 0.85
       })
     });
