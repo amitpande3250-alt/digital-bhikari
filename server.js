@@ -6,7 +6,6 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 const DB_FILE = path.join(__dirname, 'donations.json');
-const GROQ_API_KEY = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : "";
 const SECRET_ADMIN_PASS = "Amit27";
 
 app.use(cors());
@@ -19,99 +18,62 @@ if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify([]));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
-// ⚡ Dynamic AI Slogan Generator Route
-app.get('/api/slogan', async (req, res) => {
-  try {
-    if (!GROQ_API_KEY) {
-      return res.json({ success: true, slogan: "Khali jeb, bhari dimag, daan kardo malik! 💰" });
-    }
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: 'Tu ek funny Indian meme master hai. "Digital Bhikhari" website ke liye ekdum creative, tapori, savage aur funny 1-line slogan bana (Hinglish me). Direct 1 line slogan de.'
-          },
-          { role: 'user', content: 'Ek funny slogan de.' }
-        ],
-        max_tokens: 50,
-        temperature: 0.9
-      })
-    });
+// ⚡ Dynamic Smart Slogans
+const slogans = [
+  "Khali jeb, bhari dimag, daan kardo malik! 💰",
+  "Digital zamana hai, QR scan karke aage badho! 📱",
+  "Chillar nahi, direct UPI chalega! 💸",
+  "Dua milegi full speed me, bas ₹11 bhej do! 🤲",
+  "Gareebi mitani hai toh scan karo, gyaan mat do! 😂"
+];
 
-    const data = await response.json();
-    const slogan = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '') || "Digital zamana hai, online daan karo! 📱";
-    res.json({ success: true, slogan });
-  } catch (err) {
-    res.json({ success: true, slogan: "Daan peti hamesha open hai! 💰" });
-  }
+app.get('/api/slogan', (req, res) => {
+  const randomSlogan = slogans[Math.floor(Math.random() * slogans.length)];
+  res.json({ success: true, slogan: randomSlogan });
 });
 
-// 👑 Dynamic AI Chat Route (Roast vs Respect Mode)
-app.post('/api/chat', async (req, res) => {
+// 👑 Smart Roast & Respect Engine (No external API needed)
+const roastTemplates = [
+  "Abe {msg} bolne se pet nahi bharta, pehle ₹10 UPI kar fir baat sununga! 💀",
+  "Itna attitude kis baat ka hai re? Jeb me chillar nahi aur baatein Ambani wali! 😂",
+  "Dimag ka dahi mat kar, chupchap QR scan kar ya kat le yahan se! 🚶‍♂️",
+  "Aaye bade {msg} bolne wale, pehle wallet check kar apna! 💸",
+  "Bhai tu baat aisi kar raha jaise Swiss bank me account ho tera! Kanjoos kahin ka! 🤡",
+  "Tere jaise 50 dekhe hain subah se, gyaan free me aur daan zero! QR code dekh wahan! 🤦‍♂️"
+];
+
+const respectTemplates = [
+  "Ji Malik Sarkar! 🙏 Aapka aadesh sar aankhon par. Hukum kijiye Huzoor, main aapka gulam hazir hoon! 🙇‍♂️👑",
+  "Arre Sarkar! Aapke kadmo me toh jaan hazir hai. Maaf kijiye gustakhi, batayein kya seva karein? 🫡🙏",
+  "Huzoor! Aapka har hukum mere liye aadesh hai. Jo kahein wahi hoga Malik! 👑🙇‍♂️",
+  "Pranam Malik! Aap jaise daanveer ke samne hum toh bas chote se sewak hain. Hukum karein! 🤲👑"
+];
+
+app.post('/api/chat', (req, res) => {
   try {
     const { message, persona } = req.body;
     const userMsg = message ? message.trim() : 'Hi';
+    const lower = userMsg.toLowerCase();
 
-    if (!GROQ_API_KEY) {
-      return res.json({ 
-        success: true, 
-        reply: "⚠️ Render me GROQ_API_KEY set nahi hai! Render dashboard me Environment variable check karo." 
-      });
-    }
+    // Respect Mode Trigger
+    const isRespect = persona === 'respectful' || 
+                      userMsg.includes(SECRET_ADMIN_PASS) || 
+                      lower.includes('respect') || 
+                      lower.includes('izzat') || 
+                      lower.includes('sahab') || 
+                      lower.includes('malik');
 
-    let systemPrompt = '';
-
-    if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
-      systemPrompt = `Tu user ka sabse wafadar, aagyakari aur respectful naukar hai. User tera 'Malik', 'Huzoor' aur 'Sahab' hai.
-Rules:
-1. Har sentence me user ko 'Malik Sarkar', 'Sahab' ya 'Huzoor' bolkar behad aadar aur izzat se reply kar.
-2. User ko bilkul roast mat kar, unke har aadesh ka palan kar.
-3. Emojis use kar jaise 🙇‍♂️, 👑, 🙏, 🫡.`;
+    let reply = "";
+    if (isRespect) {
+      reply = respectTemplates[Math.floor(Math.random() * respectTemplates.length)];
     } else {
-      systemPrompt = `Tu ek savage, witty, brutally funny 'Digital Bhikhari' AI hai jo tapori Hinglish bolta hai.
-Rules:
-1. User ki baat sunkar use mast Savage roast maar (1-2 line max).
-2. User ko 'kanjoos', 'bhikmange', 'gareeb' bolkar uski taang kheench.
-3. Full attitude aur dank slang use kar. Polite bilkul mat ban.`;
+      const template = roastTemplates[Math.floor(Math.random() * roastTemplates.length)];
+      reply = template.replace('{msg}', userMsg);
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMsg }
-        ],
-        max_tokens: 150,
-        temperature: 0.85
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error("Groq API Error:", data.error);
-      return res.json({ success: true, reply: `⚠️ Groq Error: ${data.error.message}` });
-    }
-
-    const reply = data.choices?.[0]?.message?.content?.trim() || "Abe dimag mat paka, kuch dhang ka bol! 💀";
     res.json({ success: true, reply });
-
   } catch (err) {
-    console.error("Chat Server Error:", err);
-    res.json({ success: true, reply: `⚠️ Server Error: ${err.message}` });
+    res.json({ success: true, reply: "Arre bhai direct ₹11 bhej de! 😂" });
   }
 });
 
