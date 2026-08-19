@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const DB_FILE = path.join(__dirname, 'donations.json');
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
 
 app.use(cors());
 app.use(express.json());
