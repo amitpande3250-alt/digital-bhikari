@@ -19,28 +19,28 @@ if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify([]));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
-// 🤖 MAIN AI INTEGRATION ROUTE
+// Slogan API
+app.get('/api/slogan', async (req, res) => {
+  res.json({ success: true, slogan: "Digital zamana hai, QR scan karke aage badho! 📱" });
+});
+
+// 👑 AI Chat Route
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, persona } = req.body;
     const userMsg = message ? message.trim() : 'Hi';
 
-    console.log("Incoming Message:", userMsg);
-
     if (!GROQ_API_KEY) {
-      console.error("GROQ_API_KEY missing in environment variables!");
-      return res.status(500).json({ success: false, reply: "⚠️ API Key not configured on server." });
+      return res.json({ success: true, reply: "⚠️ GROQ_API_KEY missing hai Render settings me!" });
     }
 
-    // System Prompt Define
-    let systemInstruction = "";
+    let systemPrompt = '';
     if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
-      systemInstruction = "Tu user ka aadar-samman karne wala humble naukar hai. Har baat me user ko 'Malik', 'Huzoor', 'Sahab' bolke short polite Hinglish me reply kar. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
+      systemPrompt = "Tu user ka aadar karne wala sevak hai. Har message me user ko 'Malik Sarkar', 'Sahab', 'Huzoor' bolkar pure samman ke sath Hinglish me short reply de. Emojis: 🙇‍♂️, 👑, 🙏.";
     } else {
-      systemInstruction = "Tu ek witty, brutal, sarcastic 'Digital Bhikhari' AI hai. User ki baat par short savage roast kar Hinglish me (1-2 lines) aur daan maang.";
+      systemPrompt = "Tu ek savage, funny Digital Bhikhari AI hai. User ke message par tagda tapori roast de Hinglish me (1-2 lines) aur daan maang. Polite bilkul mat bano.";
     }
 
-    // AI API Call
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -50,34 +50,39 @@ app.post('/api/chat', async (req, res) => {
       body: JSON.stringify({
         model: 'openai/gpt-oss-20b',
         messages: [
-          { role: 'system', content: systemInstruction },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userMsg }
         ],
-        max_tokens: 150,
+        max_tokens: 600,
         temperature: 0.8
       })
     });
 
     const data = await response.json();
-    console.log("Groq Status:", response.status);
 
     if (data.error) {
-      console.error("Groq API Error Detail:", data.error);
-      return res.json({ success: true, reply: `⚠️ AI Error: ${data.error.message}` });
+      return res.json({ success: true, reply: `⚠️ Groq Error: ${data.error.message}` });
     }
 
-    const aiReply = data.choices?.[0]?.message?.content?.trim();
+    const choice = data.choices?.[0]?.message;
+    let reply = choice?.content?.trim();
 
-    if (!aiReply) {
-      console.warn("AI returned empty content. Full payload:", JSON.stringify(data));
-      return res.json({ success: true, reply: "Abe thoda zor se bol, samajh nahi aaya! 💀" });
+    // Fallback: If content is empty due to reasoning model
+    if (!reply && choice?.reasoning) {
+      const match = choice.reasoning.match(/"([^"]+)"/g);
+      if (match && match.length > 0) {
+        reply = match[match.length - 1].replace(/"/g, '');
+      }
     }
 
-    res.json({ success: true, reply: aiReply });
+    if (!reply) {
+      reply = "Abe chillar daal pehle, fir dialogue sununga! 💀";
+    }
+
+    res.json({ success: true, reply });
 
   } catch (err) {
-    console.error("Server API Catch Error:", err);
-    res.status(500).json({ success: false, reply: `⚠️ Server Error: ${err.message}` });
+    res.json({ success: true, reply: `⚠️ Server Error: ${err.message}` });
   }
 });
 
