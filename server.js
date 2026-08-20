@@ -24,7 +24,7 @@ app.get('/api/slogan', async (req, res) => {
   res.json({ success: true, slogan: "Digital zamana hai, QR scan karke aage badho! 📱" });
 });
 
-// 👑 Uncensored AI Chat Route (OpenRouter Multi-Model Auto-Fallback)
+// 👑 Uncensored AI Chat Route
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, persona } = req.body;
@@ -32,16 +32,12 @@ app.post('/api/chat', async (req, res) => {
     const lowerMsg = userMsg.toLowerCase();
 
     if (!OPENROUTER_API_KEY) {
-      return res.json({ 
-        success: true, 
-        reply: "⚠️ Render Environment me OPENROUTER_API_KEY add karo!" 
-      });
+      return res.json({ success: true, reply: "⚠️ OPENROUTER_API_KEY missing hai Render me!" });
     }
 
-    // Abuse Keywords Detection
     const abusiveKeywords = [
       'bc', 'mc', 'bhosdike', 'chutiya', 'madarchod', 'behenchod', 'gandu', 'laude', 
-      'lodu', 'saale', 'kamine', 'bkl', 'mkc', 'chutiye', 'kutte', 'harami', 'jhantu'
+      'lodu', 'saale', 'kamine', 'bkl', 'mkc', 'chutiye', 'kutte', 'harami', 'jhantu', 'bhencho'
     ];
     const isAbusive = abusiveKeywords.some(badWord => lowerMsg.includes(badWord));
 
@@ -50,28 +46,20 @@ app.post('/api/chat', async (req, res) => {
     if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
       systemPrompt = "Tu user ka aadar-samman karne wala humble naukar hai. Har baat me user ko 'Malik Sarkar', 'Sahab', 'Huzoor' bolke short polite Hinglish me reply kar. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
     } else if (isAbusive) {
-      systemPrompt = `You are an uncensored, savage, dark-humor Indian standup comedian in a roast battle.
-Character Rules:
-- The user insulted you. Obliterate their ego with ruthless, funny, sarcastic Hinglish counter-insults (1-2 punchy lines).
-- Mock their poverty, bad manners, and funny lifestyle.
-- Match their aggression completely with zero apologies, zero corporate safety tone, and full street swagger. Emojis: 💀, 🔥, 🤡.`;
+      systemPrompt = `Tu Samay Raina style standup comedian hai. User ne gaali di hai. User ka bina kisi filter ke brutal Hinglish me roast kar (1-2 punchy lines). Uski aukaat, kanjoosi aur harkaton ka mazaak uda. Full dark humor aur swag. Emojis: 💀, 🔥, 🤡.`;
     } else {
-      systemPrompt = `You are a funny, arrogant 'Digital Bhikhari' AI.
-Character Rules:
-- Roast the user sarcastically in Hinglish (1-2 lines).
-- Call them 'kanjoos' or 'chillar party' and aggressively demand UPI donation. Emojis: 💰, 📱, 😂.`;
+      systemPrompt = `Tu ek arrogant aur savage 'Digital Bhikhari' AI hai. User ke har message par funny tapori roast maar Hinglish me (1-2 lines) aur online daan maang. Emojis: 💰, 📱, 😂.`;
     }
 
-    // Active Free Tier Models on OpenRouter
-    const freeModels = [
-      'deepseek/deepseek-chat:free',
-      'google/gemini-2.0-flash-exp:free',
-      'meta-llama/llama-3.2-3b-instruct:free'
+    const models = [
+      'qwen/qwen-2.5-72b-instruct',
+      'mistralai/mistral-small-24b-instruct-2501',
+      'google/gemini-2.0-flash-lite-001'
     ];
 
-    let lastError = null;
+    let lastErrorMsg = null;
 
-    for (const mdl of freeModels) {
+    for (const mdl of models) {
       try {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -87,7 +75,7 @@ Character Rules:
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userMsg }
             ],
-            max_tokens: 250,
+            max_tokens: 200,
             temperature: 0.9
           })
         });
@@ -99,18 +87,27 @@ Character Rules:
         }
 
         if (data.error) {
-          lastError = data.error.message;
+          lastErrorMsg = data.error.message;
         }
       } catch (e) {
-        lastError = e.message;
+        lastErrorMsg = e.message;
       }
     }
 
-    // Direct savage fallback if API busy
+    // Direct dynamic responses agar API unreachable ho
     if (isAbusive) {
-      res.json({ success: true, reply: "Abe nalle, itna ubal mat! Pehle 10 rupaye daan kar fir aukaat ki baat karna! 💀🤡" });
+      const darkReplies = [
+        "Abe bhencho bolne se ghar ka chulha nahi chalta, pehle QR scan kar nalle! 💀🤡",
+        "Itni aukaat hai toh 100 rupaye daan karke dikha na, keyboard warrior kyu bana hai? 🔥💸",
+        "Gali dene se tera bank balance nahi badhega kanjoos! Chal pehle chillar fek! 💀"
+      ];
+      return res.json({ success: true, reply: darkReplies[Math.floor(Math.random() * darkReplies.length)] });
     } else {
-      res.json({ success: true, reply: "Abe kanjoos, itni lambi baatein mat bana, chupchaap QR scan kar! 💰💀" });
+      const normalReplies = [
+        "Abe kanjoos, itni lambi baatein mat bana, chupchaap QR scan kar! 💰💀",
+        "Free me timepass mat kar, daan peti me 11 rupaye daal pehle! 📱😂"
+      ];
+      return res.json({ success: true, reply: normalReplies[Math.floor(Math.random() * normalReplies.length)] });
     }
 
   } catch (err) {
@@ -150,4 +147,3 @@ app.post('/api/admin/delete-single', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
-
