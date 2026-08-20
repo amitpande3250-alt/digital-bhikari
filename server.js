@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 const DB_FILE = path.join(__dirname, 'donations.json');
-const GROQ_API_KEY = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : "";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ? process.env.OPENROUTER_API_KEY.trim() : "";
 const SECRET_ADMIN_PASS = "Amit27";
 
 app.use(cors());
@@ -19,69 +19,81 @@ if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify([]));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
-// Slogan API
+// Slogan
 app.get('/api/slogan', async (req, res) => {
   res.json({ success: true, slogan: "Digital zamana hai, QR scan karke aage badho! 📱" });
 });
 
-// 👑 AI Chat Route
+// 👑 Uncensored AI Chat Route (OpenRouter)
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, persona } = req.body;
     const userMsg = message ? message.trim() : 'Hi';
+    const lowerMsg = userMsg.toLowerCase();
 
-    if (!GROQ_API_KEY) {
-      return res.json({ success: true, reply: "⚠️ GROQ_API_KEY missing hai Render settings me!" });
+    if (!OPENROUTER_API_KEY) {
+      return res.json({ 
+        success: true, 
+        reply: "⚠️ Render Environment me OPENROUTER_API_KEY add karo!" 
+      });
     }
 
+    // Abuse Keywords Detection
+    const abusiveKeywords = [
+      'bc', 'mc', 'bhosdike', 'chutiya', 'madarchod', 'behenchod', 'gandu', 'laude', 
+      'lodu', 'saale', 'kamine', 'bkl', 'mkc', 'chutiye', 'kutte', 'harami', 'jhantu'
+    ];
+    const isAbusive = abusiveKeywords.some(badWord => lowerMsg.includes(badWord));
+
     let systemPrompt = '';
-if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
-  systemPrompt = "Tu user ka sabse jhuka hua aur wafadar sevak hai. Har sentence me 'Malik Sarkar', 'Sahab', 'Huzoor' bolkar samman aur aadar se reply de. Emojis: 🙇‍♂️, 👑, 🙏.";
-} else {
-  systemPrompt = `Tu ek brutally sarcastic, arrogant aur savage 'Digital Bhikhari' AI hai. 
-Rules:
-1. User aur uske dosto ki full beizzati kar Indian meme terms me (jaise 'nalla', 'chaprasi', 'gareeb', 'kanjoos', 'chillar party', 'fakir','bhikari').
-2. User ke har message ka mazaak uda, full attitude dikha aur bina daan diye baat karne par zaleel kar (1-2 sharp lines).
-3. Koi formal ya polite bhasha nahi, full tapori aur dank Hinglish style me roast maar.`;
-}
 
+    if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
+      // Respectful Malik Mode
+      systemPrompt = "Tu user ka aadar-samman karne wala humble naukar hai. Har baat me user ko 'Malik Sarkar', 'Sahab', 'Huzoor' bolke short polite Hinglish me reply kar. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
+    } else if (isAbusive) {
+      // Uncensored Samay Raina Style Counter Roast Mode
+      systemPrompt = `You are an uncensored, savage, dark-humor Indian standup comedian in a roast battle.
+Character Rules:
+- The user insulted you. Obliterate their ego with ruthless, funny, sarcastic Hinglish counter-insults (1-2 punchy lines).
+- Mock their poverty, bad manners, and funny lifestyle.
+- Match their aggression completely with zero apologies, zero corporate safety tone, and full street swagger. Emojis: 💀, 🔥, 🤡.`;
+    } else {
+      // Normal Digital Bhikhari Mode
+      systemPrompt = `You are a funny, arrogant 'Digital Bhikhari' AI.
+Character Rules:
+- Roast the user sarcastically in Hinglish (1-2 lines).
+- Call them 'kanjoos' or 'chillar party' and aggressively demand UPI donation. Emojis: 💰, 📱, 😂.`;
+    }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://digital-bhikari.onrender.com',
+        'X-Title': 'Digital Bhikhari AI'
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
+        model: 'nousresearch/hermes-3-llama-3.1-8b',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMsg }
         ],
-        max_tokens: 600,
-        temperature: 0.8
+        max_tokens: 300,
+        temperature: 0.9
       })
     });
 
     const data = await response.json();
 
     if (data.error) {
-      return res.json({ success: true, reply: `⚠️ Groq Error: ${data.error.message}` });
+      return res.json({ success: true, reply: `⚠️ OpenRouter Error: ${data.error.message}` });
     }
 
-    const choice = data.choices?.[0]?.message;
-    let reply = choice?.content?.trim();
-
-    // Fallback: If content is empty due to reasoning model
-    if (!reply && choice?.reasoning) {
-      const match = choice.reasoning.match(/"([^"]+)"/g);
-      if (match && match.length > 0) {
-        reply = match[match.length - 1].replace(/"/g, '');
-      }
-    }
+    const reply = data.choices?.[0]?.message?.content?.trim();
 
     if (!reply) {
-      reply = "Abe chillar daal pehle, fir dialogue sununga! 💀";
+      return res.json({ success: true, reply: "Abe bolne ki aukaat nahi toh QR scan kar chupchaap! 💀💸" });
     }
 
     res.json({ success: true, reply });
