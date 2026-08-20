@@ -25,7 +25,6 @@ app.get('/api/slogan', async (req, res) => {
     if (!GROQ_API_KEY) {
       return res.json({ success: true, slogan: "Khali jeb, bhari dimag, daan kardo malik! 💰" });
     }
-
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -37,12 +36,11 @@ app.get('/api/slogan', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: 'Tu ek funny Indian meme master hai. "Digital Bhikhari" website ke liye ekdum creative, savage 1-line slogan bana Hinglish me.'
+            content: 'Tu ek funny meme master hai. "Digital Bhikhari" website ke liye ekdum savage aur funny 1-line slogan bana Hinglish me.'
           },
           { role: 'user', content: 'Slogan do' }
         ],
-        max_tokens: 50,
-        temperature: 0.9
+        max_tokens: 60
       })
     });
 
@@ -63,15 +61,15 @@ app.post('/api/chat', async (req, res) => {
     if (!GROQ_API_KEY) {
       return res.json({ 
         success: true, 
-        reply: "⚠️ Render Environment me GROQ_API_KEY add nahi hai! Render dashboard me Environment variable check karo." 
+        reply: "⚠️ Render me GROQ_API_KEY missing hai!" 
       });
     }
 
     let systemPrompt = '';
     if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
-      systemPrompt = `Tu user ka aagyakari naukar hai. Har baat par 'Malik Sarkar', 'Huzoor', 'Sahab' bolke respect se Hinglish me reply kar. Emojis: 🙇‍♂️, 👑, 🙏, 🫡.`;
+      systemPrompt = "Tu user ka sabse wafadar sevak hai. Har message me user ko 'Malik Sarkar', 'Sahab', 'Huzoor' bolkar pure samman ke sath Hinglish me short reply de. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
     } else {
-      systemPrompt = `Tu ek savage, witty, brutally funny Digital Bhikhari AI hai jo tapori Hinglish bolta hai. User ki baat par solid funny roast maar (1-2 line max) aur kanjoos bol.`;
+      systemPrompt = "Tu ek brutal, savage aur sarcastic 'Digital Bhikhari' AI hai. User ki baat par tagda savage roast maar Hinglish me (1-2 line max) aur daan/paise maang.";
     }
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -86,19 +84,23 @@ app.post('/api/chat', async (req, res) => {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMsg }
         ],
-        max_tokens: 150,
-        temperature: 0.85
+        max_tokens: 150
       })
     });
 
     const data = await response.json();
 
     if (data.error) {
-      return res.json({ success: true, reply: `⚠️ Groq Error: ${data.error.message}` });
+      console.error("Groq Raw Error:", data.error);
+      return res.json({ success: true, reply: `⚠️ Groq API Error: ${data.error.message}` });
     }
 
-    const reply = data.choices?.[0]?.message?.content?.trim() || "Abe kuch dhang ka bol! 💀";
-    res.json({ success: true, reply });
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) {
+      res.json({ success: true, reply });
+    } else {
+      res.json({ success: true, reply: "Arre kuch bol to sahi kanjoos! 💀" });
+    }
 
   } catch (err) {
     res.json({ success: true, reply: `⚠️ Server Error: ${err.message}` });
