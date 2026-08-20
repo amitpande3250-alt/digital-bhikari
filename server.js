@@ -15,9 +15,45 @@ app.use(express.static(__dirname));
 
 if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify([]));
 
-// 📄 Page Routes
+// Pages
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
+
+// Helper to call Groq with auto-fallback models
+async function getGroqCompletion(messages, max_tokens = 150) {
+  const modelsToTry = [
+    'llama-3.2-3b-preview',
+    'llama-3.2-11b-vision-preview',
+    'llama-3.2-1b-preview',
+    'deepseek-r1-distill-llama-70b'
+  ];
+
+  for (const model of modelsToTry) {
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          max_tokens: max_tokens,
+          temperature: 0.85
+        })
+      });
+
+      const data = await response.json();
+      if (data.choices?.[0]?.message?.content) {
+        return data.choices[0].message.content.trim();
+      }
+    } catch (e) {
+      // Try next model
+    }
+  }
+  return null;
+}
 
 // ⚡ Dynamic AI Slogan Generator Route
 app.get('/api/slogan', async (req, res) => {
@@ -25,28 +61,17 @@ app.get('/api/slogan', async (req, res) => {
     if (!GROQ_API_KEY) {
       return res.json({ success: true, slogan: "Khali jeb, bhari dimag, daan kardo malik! 💰" });
     }
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: 'Tu ek funny Indian meme master hai. "Digital Bhikhari" website ke liye ekdum creative, tapori, savage aur funny 1-line slogan bana (Hinglish me). Direct 1 line slogan de.'
-          },
-          { role: 'user', content: 'Ek funny slogan de.' }
-        ],
-        max_tokens: 50,
-        temperature: 0.9
-      })
-    });
 
-    const data = await response.json();
-    const slogan = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '') || "Digital zamana hai, online daan karo! 📱";
+    const messages = [
+      {
+        role: 'system',
+        content: 'Tu ek funny Indian meme master hai. "Digital Bhikhari" website ke liye ekdum creative, tapori, savage aur funny 1-line slogan bana (Hinglish me). Direct 1 line slogan de.'
+      },
+      { role: 'user', content: 'Ek funny slogan de.' }
+    ];
+
+    const reply = await getGroqCompletion(messages, 50);
+    const slogan = reply ? reply.replace(/^["']|["']$/g, '') : "Digital zamana hai, online daan karo! 📱";
     res.json({ success: true, slogan });
   } catch (err) {
     res.json({ success: true, slogan: "Daan peti hamesha open hai! 💰" });
@@ -67,7 +92,6 @@ app.post('/api/chat', async (req, res) => {
     }
 
     let systemPrompt = '';
-
     if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
       systemPrompt = `Tu user ka sabse wafadar, aagyakari aur respectful naukar hai. User tera 'Malik', 'Huzoor' aur 'Sahab' hai.
 Rules:
@@ -82,34 +106,23 @@ Rules:
 3. Full attitude aur dank slang use kar. Polite bilkul mat ban.`;
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMsg }
-        ],
-        max_tokens: 150,
-        temperature: 0.85
-      })
-    });
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMsg }
+    ];
 
-    const data = await response.json();
+    const reply = await getGroqCompletion(messages, 150);
 
-    if (data.error) {
-      return res.json({ success: true, reply: `⚠️ Groq Error: ${data.error.message}` });
+    if (reply) {
+      res.json({ success: true, reply });
+    } else {
+      res.json({ 
+        success: true, 
+        reply: "Abe chillar leke aaya kya? Pehle QR scan kar fir baat kar! 💀" 
+      });
     }
-
-    const reply = data.choices?.[0]?.message?.content?.trim() || "Abe dimag mat paka, kuch dhang ka bol! 💀";
-    res.json({ success: true, reply });
-
   } catch (err) {
-    res.json({ success: true, reply: `⚠️ Server Error: ${err.message}` });
+    res.json({ success: true, reply: "Arre bhai server load le gaya, thoda daan daal ke server thanda kar! 😂" });
   }
 });
 
