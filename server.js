@@ -74,7 +74,7 @@ Character Rules:
         'X-Title': 'Digital Bhikhari AI'
       },
       body: JSON.stringify({
-        model: 'nousresearch/hermes-3-llama-3.1-8b',
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMsg }
