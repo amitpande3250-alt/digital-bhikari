@@ -19,12 +19,11 @@ if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify([]));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
-// ⚡ Dynamic AI Slogan Generator Route
+// ⚡ Slogan Generator
 app.get('/api/slogan', async (req, res) => {
   try {
-    if (!GROQ_API_KEY) {
-      return res.json({ success: true, slogan: "Khali jeb, bhari dimag, daan kardo malik! 💰" });
-    }
+    if (!GROQ_API_KEY) return res.json({ success: true, slogan: "Khali jeb, bhari dimag, daan kardo malik! 💰" });
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -34,13 +33,10 @@ app.get('/api/slogan', async (req, res) => {
       body: JSON.stringify({
         model: 'openai/gpt-oss-20b',
         messages: [
-          {
-            role: 'system',
-            content: 'Tu ek funny meme master hai. "Digital Bhikhari" website ke liye ekdum savage aur funny 1-line slogan bana Hinglish me.'
-          },
-          { role: 'user', content: 'Slogan do' }
+          { role: 'system', content: 'Tu ek tapori meme creator hai. 1 funny 1-line donation slogan de Hinglish me.' },
+          { role: 'user', content: 'Slogan' }
         ],
-        max_tokens: 60
+        max_tokens: 50
       })
     });
 
@@ -59,48 +55,53 @@ app.post('/api/chat', async (req, res) => {
     const userMsg = message ? message.trim() : 'Hi';
 
     if (!GROQ_API_KEY) {
-      return res.json({ 
-        success: true, 
-        reply: "⚠️ Render me GROQ_API_KEY missing hai!" 
-      });
+      return res.json({ success: true, reply: "⚠️ Render me GROQ_API_KEY missing hai!" });
     }
 
     let systemPrompt = '';
     if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
-      systemPrompt = "Tu user ka sabse wafadar sevak hai. Har message me user ko 'Malik Sarkar', 'Sahab', 'Huzoor' bolkar pure samman ke sath Hinglish me short reply de. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
+      systemPrompt = "Tu user ka aagyakari naukar hai. Har baat par 'Malik Sarkar', 'Sahab', 'Huzoor' bolke pure samman se Hinglish me chota reply de. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
     } else {
-      systemPrompt = "Tu ek brutal, savage aur sarcastic 'Digital Bhikhari' AI hai. User ki baat par tagda savage roast maar Hinglish me (1-2 line max) aur daan/paise maang.";
+      systemPrompt = "Tu ek brutal, savage aur hilarious 'Digital Bhikhari' AI hai. User ke har message par savage roast maar (1-2 line max) aur daan/paise maang.";
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMsg }
-        ],
-        max_tokens: 150
-      })
-    });
+    const models = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+    let lastError = null;
 
-    const data = await response.json();
+    for (const mdl of models) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: mdl,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMsg }
+            ],
+            max_tokens: 120,
+            temperature: 0.8
+          })
+        });
 
-    if (data.error) {
-      console.error("Groq Raw Error:", data.error);
-      return res.json({ success: true, reply: `⚠️ Groq API Error: ${data.error.message}` });
+        const data = await response.json();
+
+        if (data.choices?.[0]?.message?.content) {
+          return res.json({ success: true, reply: data.choices[0].message.content.trim() });
+        }
+
+        if (data.error) {
+          lastError = data.error.message;
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
     }
 
-    const reply = data.choices?.[0]?.message?.content?.trim();
-    if (reply) {
-      res.json({ success: true, reply });
-    } else {
-      res.json({ success: true, reply: "Arre kuch bol to sahi kanjoos! 💀" });
-    }
+    res.json({ success: true, reply: lastError ? `⚠️ ${lastError}` : "Abe chillar leke aaya kya? Pehle QR scan kar! 💀" });
 
   } catch (err) {
     res.json({ success: true, reply: `⚠️ Server Error: ${err.message}` });
