@@ -19,11 +19,28 @@ if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify([]));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
-// ⚡ Slogan Generator
-app.get('/api/slogan', async (req, res) => {
+// 🤖 MAIN AI INTEGRATION ROUTE
+app.post('/api/chat', async (req, res) => {
   try {
-    if (!GROQ_API_KEY) return res.json({ success: true, slogan: "Khali jeb, bhari dimag, daan kardo malik! 💰" });
+    const { message, persona } = req.body;
+    const userMsg = message ? message.trim() : 'Hi';
 
+    console.log("Incoming Message:", userMsg);
+
+    if (!GROQ_API_KEY) {
+      console.error("GROQ_API_KEY missing in environment variables!");
+      return res.status(500).json({ success: false, reply: "⚠️ API Key not configured on server." });
+    }
+
+    // System Prompt Define
+    let systemInstruction = "";
+    if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
+      systemInstruction = "Tu user ka aadar-samman karne wala humble naukar hai. Har baat me user ko 'Malik', 'Huzoor', 'Sahab' bolke short polite Hinglish me reply kar. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
+    } else {
+      systemInstruction = "Tu ek witty, brutal, sarcastic 'Digital Bhikhari' AI hai. User ki baat par short savage roast kar Hinglish me (1-2 lines) aur daan maang.";
+    }
+
+    // AI API Call
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -33,100 +50,48 @@ app.get('/api/slogan', async (req, res) => {
       body: JSON.stringify({
         model: 'openai/gpt-oss-20b',
         messages: [
-          { role: 'system', content: 'Tu ek tapori meme creator hai. 1 funny 1-line donation slogan de Hinglish me.' },
-          { role: 'user', content: 'Slogan' }
+          { role: 'system', content: systemInstruction },
+          { role: 'user', content: userMsg }
         ],
-        max_tokens: 50
+        max_tokens: 150,
+        temperature: 0.8
       })
     });
 
     const data = await response.json();
-    const slogan = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '') || "Digital zamana hai, online daan karo! 📱";
-    res.json({ success: true, slogan });
+    console.log("Groq Status:", response.status);
+
+    if (data.error) {
+      console.error("Groq API Error Detail:", data.error);
+      return res.json({ success: true, reply: `⚠️ AI Error: ${data.error.message}` });
+    }
+
+    const aiReply = data.choices?.[0]?.message?.content?.trim();
+
+    if (!aiReply) {
+      console.warn("AI returned empty content. Full payload:", JSON.stringify(data));
+      return res.json({ success: true, reply: "Abe thoda zor se bol, samajh nahi aaya! 💀" });
+    }
+
+    res.json({ success: true, reply: aiReply });
+
   } catch (err) {
-    res.json({ success: true, slogan: "Daan peti hamesha open hai! 💰" });
+    console.error("Server API Catch Error:", err);
+    res.status(500).json({ success: false, reply: `⚠️ Server Error: ${err.message}` });
   }
 });
 
-// 👑 Dynamic AI Chat Route
-app.post('/api/chat', async (req, res) => {
-  try {
-    const { message, persona } = req.body;
-    const userMsg = message ? message.trim() : 'Hi';
-
-    if (!GROQ_API_KEY) {
-      return res.json({ success: true, reply: "⚠️ Render me GROQ_API_KEY missing hai!" });
-    }
-
-    let systemPrompt = '';
-    if (persona === 'respectful' || userMsg.includes(SECRET_ADMIN_PASS)) {
-      systemPrompt = "Tu user ka aagyakari naukar hai. Har baat par 'Malik Sarkar', 'Sahab', 'Huzoor' bolke pure samman se Hinglish me chota reply de. Emojis use kar jaise 🙇‍♂️, 👑, 🙏.";
-    } else {
-      systemPrompt = "Tu ek brutal, savage aur hilarious 'Digital Bhikhari' AI hai. User ke har message par savage roast maar (1-2 line max) aur daan/paise maang.";
-    }
-
-    const models = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
-    let lastError = null;
-
-    for (const mdl of models) {
-      try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${GROQ_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: mdl,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userMsg }
-            ],
-            max_tokens: 120,
-            temperature: 0.8
-          })
-        });
-
-        const data = await response.json();
-
-        if (data.choices?.[0]?.message?.content) {
-          return res.json({ success: true, reply: data.choices[0].message.content.trim() });
-        }
-
-        if (data.error) {
-          lastError = data.error.message;
-        }
-      } catch (e) {
-        lastError = e.message;
-      }
-    }
-
-    res.json({ success: true, reply: lastError ? `⚠️ ${lastError}` : "Abe chillar leke aaya kya? Pehle QR scan kar! 💀" });
-
-  } catch (err) {
-    res.json({ success: true, reply: `⚠️ Server Error: ${err.message}` });
-  }
-});
-
-// 🔮 Save Wish & Donation
+// Donation & Admin Routes
 app.post('/api/wish', (req, res) => {
   const { name, wish, amount } = req.body;
   if (!wish) return res.status(400).json({ error: 'Wish is required' });
-
   const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-  const entry = {
-    id: Date.now(),
-    name: name || 'Gupt Daanveer 🎭',
-    wish: wish,
-    amount: Number(amount) || 11,
-    date: new Date().toLocaleString()
-  };
+  const entry = { id: Date.now(), name: name || 'Gupt Daanveer 🎭', wish, amount: Number(amount) || 11, date: new Date().toLocaleString() };
   data.unshift(entry);
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
   res.json({ success: true, data: entry });
 });
 
-// 📊 Admin Auth API
 app.post('/api/admin/auth', (req, res) => {
   const { passcode } = req.body;
   if (passcode === SECRET_ADMIN_PASS) {
@@ -136,7 +101,6 @@ app.post('/api/admin/auth', (req, res) => {
   res.status(401).json({ error: 'Unauthorized' });
 });
 
-// 🗑️ Delete Specific Record API
 app.post('/api/admin/delete-single', (req, res) => {
   const { passcode, id } = req.body;
   if (passcode === SECRET_ADMIN_PASS) {
@@ -148,6 +112,4 @@ app.post('/api/admin/delete-single', (req, res) => {
   res.status(401).json({ error: 'Unauthorized' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
